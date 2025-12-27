@@ -7,12 +7,14 @@ public class PlayerController : MonoBehaviour
     public float forwardSpeed = 7.0f;
     private float initialForwardSpeed;
     private Animator playerAnim;
+    private Vector3 startPosition;
 
     private static readonly int IsRunning = Animator.StringToHash("isRunning");
     private static readonly int JumpTrigger = Animator.StringToHash("jump");
     private static readonly int RollTrigger = Animator.StringToHash("roll");
     private static readonly int MoveLeftTrigger = Animator.StringToHash("moveLeft");
     private static readonly int MoveRightTrigger = Animator.StringToHash("moveRight");
+    private static readonly int TurnLeftTrigger = Animator.StringToHash("turnLeft");
 
     public float jumpHeight = 2f;
     public float jumpDuration = 1f;
@@ -29,11 +31,24 @@ public class PlayerController : MonoBehaviour
     private const float RightTrackZ = 3f;
     private const float TrackZThreshold = 0.1f;
 
+    public AudioClip actionAudio;
+    public float soundVolume = 5f;
+
+    public float turnDuration = 0.5f;
+    private bool isTurning = false;
+    private Quaternion targetRotation;
+    private Quaternion initialRotation;
+
     // Start is called before the first frame update
     void Start()
     {
+        startPosition = transform.position;
         initialForwardSpeed = forwardSpeed;
         forwardSpeed = 0f;
+
+        initialRotation = Quaternion.Euler(0, 0, 0);
+        targetRotation = Quaternion.Euler(0, -90, 0);
+        transform.rotation = initialRotation;
 
         playerAnim = GetComponent<Animator>();
         if (playerAnim != null)
@@ -70,11 +85,17 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        if (!isTurning && transform.rotation != targetRotation)
+        {
+            StartCoroutine(TurnToForwardCoroutine()); 
+            return;
+        }
+
         forwardSpeed = initialForwardSpeed;
         if (playerAnim != null)
         {
             playerAnim.SetBool(IsRunning, true);
-            playerAnim.speed = 1f; 
+            playerAnim.speed = 1f;
         }
 
         transform.position += Vector3.left * forwardSpeed * Time.deltaTime;
@@ -83,6 +104,34 @@ public class PlayerController : MonoBehaviour
         HandleAnimationInput();
         HandleTrackSwitch();
     }
+
+    private IEnumerator TurnToForwardCoroutine()
+    {
+        isTurning = true;
+        float elapsedTime = 0f;
+        Quaternion startRotation = transform.rotation;
+
+        if (playerAnim != null)
+        {
+            playerAnim.SetTrigger(TurnLeftTrigger);
+        }
+
+        while (elapsedTime < turnDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = Mathf.SmoothStep(0f, 1f, elapsedTime / turnDuration);
+            transform.rotation = Quaternion.Lerp(startRotation, targetRotation, t);
+            yield return null;
+        }
+
+        transform.rotation = targetRotation;
+        isTurning = false; 
+
+        if (playerAnim != null)
+        {
+            playerAnim.speed = 1f;
+        }
+    } 
 
     // 障碍碰撞检测
     private void OnCollisionEnter(Collision collision)
@@ -152,15 +201,25 @@ public class PlayerController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.W) && !isJumping && !isRolling)
         {
             playerAnim.SetTrigger(JumpTrigger);
+            PlaySoundEffect(actionAudio);
             StartCoroutine(JumpCoroutine());
         }
 
         if (Input.GetKeyDown(KeyCode.S) && !isJumping && !isRolling)
         {
             playerAnim.SetTrigger(RollTrigger);
+            PlaySoundEffect(actionAudio);
             isRolling = true;
             playerCollider.height = originalColliderHeight / 2;
             playerCollider.center = new Vector3(originalColliderCenter.x, originalColliderHeight / 4, originalColliderCenter.z);
+        }
+    }
+
+    private void PlaySoundEffect(AudioClip clip)
+    {
+        if (clip != null)
+        {
+            AudioSource.PlayClipAtPoint(clip, transform.position, soundVolume);
         }
     }
 

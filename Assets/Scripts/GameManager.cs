@@ -33,6 +33,8 @@ public class GameManager : MonoBehaviour
     private float scoreTimer = 0f;
     private Vector3 lastPlayerPos;
 
+    private AudioSource bgmAudioSource;
+
     // 开始游戏前准备
     void Awake()
     {
@@ -48,6 +50,8 @@ public class GameManager : MonoBehaviour
         if (countdownText != null) countdownText.text = "";
 
         player = GameObject.FindGameObjectWithTag("Player");
+
+        bgmAudioSource = GetComponent<AudioSource>();
     }
 
     void Update()
@@ -96,6 +100,10 @@ public class GameManager : MonoBehaviour
         isGameRunning = true;
         modeSelectUI.SetActive(false);
         Time.timeScale = 1f;
+        if (bgmAudioSource != null && !bgmAudioSource.isPlaying)
+        {
+            bgmAudioSource.Play();
+        }
     }
 
     // 故事模式倒计时
@@ -119,6 +127,10 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 0f;
         victoryUI.SetActive(true);
         countdownText.text = "";
+        if (bgmAudioSource != null && bgmAudioSource.isPlaying)
+        {
+            bgmAudioSource.Pause();
+        }
     }    
 
     // 无尽模式更新分数
@@ -149,6 +161,11 @@ public class GameManager : MonoBehaviour
             finalScoreText.text = $"Final Score:{currentScore}";
             scoreText.text = "";
         }
+
+        if (bgmAudioSource != null && bgmAudioSource.isPlaying)
+        {
+            bgmAudioSource.Pause();
+        }
     }
 
     // 重新开始游戏
@@ -156,6 +173,15 @@ public class GameManager : MonoBehaviour
     {
         Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+
+        if (bgmAudioSource != null)
+        {
+            bgmAudioSource.UnPause();
+            if (!bgmAudioSource.isPlaying)
+            {
+                bgmAudioSource.Play();
+            }
+        }
     }
 
     // 返回模式选择
@@ -171,5 +197,12 @@ public class GameManager : MonoBehaviour
         victoryUI.SetActive(false);
         Debug.Log("Not found!");
         Invoke("BackToModeSelect", 2f);
+
+        if (bgmAudioSource != null && bgmAudioSource.isPlaying)
+        {
+            bgmAudioSource.Pause();
+        }
     }    
+
+
 }
